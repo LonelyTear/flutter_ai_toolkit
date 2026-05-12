@@ -76,41 +76,61 @@ class ChatTextField extends StatelessWidget {
           () => onSubmitted(controller.text),
     },
     child:
-        isCupertinoApp(context)
-            ? CupertinoTextField(
-              minLines: minLines,
-              maxLines: maxLines,
-              controller: controller,
-              autofocus: autofocus,
-              focusNode: focusNode,
-              onSubmitted: onSubmitted,
-              style: style,
-              placeholder: hintText,
-              placeholderStyle: hintStyle,
-              padding: hintPadding ?? EdgeInsets.zero,
-              decoration: BoxDecoration(
-                border: Border.all(width: 0, color: ToolkitColors.transparent),
+        GestureDetector(
+          // 💡 关键：添加 behavior 属性，确保它在命中测试中拦截手势
+          behavior: HitTestBehavior.opaque,
+          onLongPressStart: (_) {
+            // 💡 如果当前没有焦点，才触发长按回调
+            if (!focusNode.hasFocus) { //💡 利用组件内部已有的 focusNode 判断
+              print("cccccccccccccc");
+            }
+          },
+          onLongPressEnd: (_) {
+            print("ddddddddddddddd");
+          },
+          // 💡 关键：防止长按时触发点击（从而避免进入录入状态）
+          onTap: () {
+            print("eeeeeeeeeee33");
+            if (!focusNode.hasFocus) {
+              focusNode.requestFocus(); // 只有主动点击才获取焦点
+            }
+          },
+          child: isCupertinoApp(context)
+              ? CupertinoTextField(
+                minLines: minLines,
+                maxLines: maxLines,
+                controller: controller,
+                autofocus: autofocus,
+                focusNode: focusNode,
+                onSubmitted: onSubmitted,
+                style: style,
+                placeholder: hintText,
+                placeholderStyle: hintStyle,
+                padding: hintPadding ?? EdgeInsets.zero,
+                decoration: BoxDecoration(
+                  border: Border.all(width: 0, color: ToolkitColors.transparent),
+                ),
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+              )
+              : TextField(
+                minLines: minLines,
+                maxLines: maxLines,
+                controller: controller,
+                autofocus: false,//@back 原本为 autofocus , 如果为 true, 开屏会报错, 回头看
+                focusNode: focusNode,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                onSubmitted: onSubmitted,
+                style: style,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: hintText,
+                  hintStyle: hintStyle,
+                  contentPadding: hintPadding,
+                  isDense: false,
+                ),
               ),
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-            )
-            : TextField(
-              minLines: minLines,
-              maxLines: maxLines,
-              controller: controller,
-              autofocus: autofocus,
-              focusNode: focusNode,
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              onSubmitted: onSubmitted,
-              style: style,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: hintText,
-                hintStyle: hintStyle,
-                contentPadding: hintPadding,
-                isDense: false,
-              ),
-            ),
+        ),
   );
 }

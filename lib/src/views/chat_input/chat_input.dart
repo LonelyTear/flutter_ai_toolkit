@@ -34,6 +34,8 @@ class ChatInput extends StatefulWidget {
   const ChatInput({
     required this.onSendMessage,
     required this.onTranslateStt,
+    this.onLongPressStart, //💡
+    this.onLongPressEnd,   //💡
     this.initialMessage,
     this.onCancelEdit,
     this.onCancelMessage,
@@ -61,6 +63,9 @@ class ChatInput extends StatefulWidget {
   /// current attachments.
   final void Function(XFile file, Iterable<Attachment> attachments)
   onTranslateStt;
+
+  final VoidCallback? onLongPressStart; //💡
+  final VoidCallback? onLongPressEnd;   //💡
 
   /// The initial message to populate the input field, if any.
   final ChatMessage? initialMessage;
@@ -156,65 +161,69 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-    color: _inputStyle!.backgroundColor,
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      children: [
-        AttachmentsView(
-          attachments: _attachments,
-          onRemove: onRemoveAttachment,
-        ),
-        if (_attachments.isNotEmpty) const SizedBox(height: 6),
-        ValueListenableBuilder(
-          valueListenable: _textController,
-          builder:
-              (context, value, child) => ListenableBuilder(
-                listenable: _waveController,
-                builder:
-                    (context, child) => Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (_viewModel!.enableAttachments)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: AttachmentActionBar(
-                              onAttachments: onAttachments,
+  Widget build(BuildContext context) => GestureDetector(
+    onLongPressStart: (_) => widget.onLongPressStart?.call(), //💡
+    onLongPressEnd: (_) => widget.onLongPressEnd?.call(),     //💡
+    child: Container(
+      color: _inputStyle!.backgroundColor,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          AttachmentsView(
+            attachments: _attachments,
+            onRemove: onRemoveAttachment,
+          ),
+          if (_attachments.isNotEmpty) const SizedBox(height: 6),
+          ValueListenableBuilder(
+            valueListenable: _textController,
+            builder:
+                (context, value, child) => ListenableBuilder(
+                  listenable: _waveController,
+                  builder:
+                      (context, child) => Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (_viewModel!.enableAttachments)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: AttachmentActionBar(
+                                onAttachments: onAttachments,
+                              ),
+                            ),
+                          Expanded(
+                            child: TextOrAudioInput(
+                              inputStyle: _inputStyle!,
+                              waveController: _waveController,
+                              onCancelEdit: widget.onCancelEdit,
+                              onRecordingStopped: onRecordingStopped,
+                              onSubmitPrompt: onSubmitPrompt,
+                              textController: _textController,
+                              focusNode: _focusNode,
+                              autofocus: widget.autofocus,
+                              inputState: _inputState,
+                              cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
+                              voiceNoteRecorderStyle:
+                                  _chatStyle!.voiceNoteRecorderStyle!,
+                              chatStrings: _viewModel!.strings,
                             ),
                           ),
-                        Expanded(
-                          child: TextOrAudioInput(
-                            inputStyle: _inputStyle!,
-                            waveController: _waveController,
-                            onCancelEdit: widget.onCancelEdit,
-                            onRecordingStopped: onRecordingStopped,
-                            onSubmitPrompt: onSubmitPrompt,
-                            textController: _textController,
-                            focusNode: _focusNode,
-                            autofocus: widget.autofocus,
-                            inputState: _inputState,
-                            cancelButtonStyle: _chatStyle!.cancelButtonStyle!,
-                            voiceNoteRecorderStyle:
-                                _chatStyle!.voiceNoteRecorderStyle!,
-                            chatStrings: _viewModel!.strings,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: InputButton(
+                              inputState: _inputState,
+                              chatStyle: _chatStyle!,
+                              onSubmitPrompt: onSubmitPrompt,
+                              onCancelPrompt: onCancelPrompt,
+                              onStartRecording: onStartRecording,
+                              onStopRecording: onStopRecording,
+                            ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: InputButton(
-                            inputState: _inputState,
-                            chatStyle: _chatStyle!,
-                            onSubmitPrompt: onSubmitPrompt,
-                            onCancelPrompt: onCancelPrompt,
-                            onStartRecording: onStartRecording,
-                            onStopRecording: onStopRecording,
-                          ),
-                        ),
-                      ],
-                    ),
-              ),
-        ),
-      ],
+                        ],
+                      ),
+                ),
+          ),
+        ],
+      ),
     ),
   );
 

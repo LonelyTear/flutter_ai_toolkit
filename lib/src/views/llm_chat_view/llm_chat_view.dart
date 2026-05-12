@@ -89,6 +89,8 @@ class LlmChatView extends StatefulWidget {
     String? welcomeMessage,
     this.onCancelCallback,
     this.onErrorCallback,
+    this.onLongPressStart, //💡 增加这一行
+    this.onLongPressEnd,   //💡 增加这一行
     this.cancelMessage = 'CANCEL',
     this.errorMessage = 'ERROR',
     this.enableAttachments = true,
@@ -144,6 +146,9 @@ class LlmChatView extends StatefulWidget {
   /// By default, an alert dialog is displayed with the error message.
   final void Function(BuildContext context, LlmException error)?
   onErrorCallback;
+
+  final VoidCallback? onLongPressStart; //💡 增加这一行
+  final VoidCallback? onLongPressEnd;   //💡 增加这一行
 
   /// The text message to display when the user cancels a chat operation.
   ///
@@ -239,6 +244,8 @@ class _LlmChatViewState extends State<LlmChatView>
                         onTranslateStt: _onTranslateStt,
                         onCancelStt:
                             _pendingSttResponse == null ? null : _onCancelStt,
+                        onLongPressStart: widget.onLongPressStart, //💡 透传给内核
+                        onLongPressEnd: widget.onLongPressEnd,     //💡 透传给内核
                       ),
                     ),
                   ],
