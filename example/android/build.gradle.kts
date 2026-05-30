@@ -1,5 +1,9 @@
 allprojects {
     repositories {
+        //💡 优先使用阿里云镜像，解决 google() 仓库 TLS 握手失败及 sdk-common 下载问题 20260506
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
         google()
         mavenCentral()
     }
