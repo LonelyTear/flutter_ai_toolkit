@@ -61,9 +61,10 @@ class _ChatPageState extends State<ChatPage>
     upperBound: 1.0,
   );
 
-  late final _provider = FirebaseProvider(
-    model: FirebaseAI.googleAI().generativeModel(model: 'gemini-2.0-flash'),
-  );
+  // late final _provider = FirebaseProvider(
+  //   model: FirebaseAI.googleAI().generativeModel(model: 'gemini-2.0-flash'),
+  // );
+  late final _provider = EchoProvider();
 
   final _halloweenMode = ValueNotifier(false);
 
