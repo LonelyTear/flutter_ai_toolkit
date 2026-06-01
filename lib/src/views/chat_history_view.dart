@@ -51,7 +51,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
   void dispose() { //💡 销毁控制器
     _scrollController.dispose(); //💡 释放内存
     super.dispose(); //💡 调用父类销毁
-  } //💡
+  }
 
   @override // 重写父类方法
   Widget build(BuildContext context) => ChatViewModelClient( // 构建方法，返回聊天视图模型客户端
@@ -60,26 +60,18 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
       WidgetsBinding.instance.addPostFrameCallback((_) { //💡 布局完成后执行
         if (_scrollController.hasClients) { //💡 检查滚动位置是否挂载
           _scrollController.jumpTo(_scrollController.position.maxScrollExtent); //💡 滚动到最大偏移量
-        } //💡
-      }); //💡
+        }
+      });
 
       final chatStyle = LlmChatViewStyle.resolve(viewModel.style); // 解析聊天视图样式
-      final padding = // 获取内边距
-          chatStyle.padding as EdgeInsets? ?? // 如果样式中有内边距则使用，否则
-          const EdgeInsets.only(top: 16, left: 16, right: 16); // 使用默认内边距
+      final padding = chatStyle.padding as EdgeInsets? ?? const EdgeInsets.only(top: 16, left: 16, right: 16);// 获取内边距, 如果样式中有内边距则使用，否则使用默认内边距
       final messageSpacing = chatStyle.messageSpacing ?? 6.0; // 获取消息间距，默认为 6.0
 
       final showWelcomeMessage = viewModel.welcomeMessage != null; // 判断是否显示欢迎消息
-      final showSuggestions = // 判断是否显示建议
-          viewModel.suggestions.isNotEmpty && // 当建议列表不为空且
-          viewModel.provider.history.isEmpty; // 聊天历史为空时显示
+      final showSuggestions = viewModel.suggestions.isNotEmpty && viewModel.provider.history.isEmpty; // 判断是否显示建议 当建议列表不为空且 聊天历史为空时显示 📌所以这个建议目前只用到了初始化时的冷启动上
       final history = [ // 构建历史消息列表
         if (showWelcomeMessage) // 如果需要显示欢迎消息
-          ChatMessage( // 创建聊天消息对象
-            origin: MessageOrigin.llm, // 消息来源为 LLM
-            text: viewModel.welcomeMessage, // 消息文本为欢迎消息
-            attachments: [], // 附件为空
-          ),
+          ChatMessage(origin: MessageOrigin.llm, text: viewModel.welcomeMessage, attachments: [],), // 创建来源为 LLM 消息对象
         ...viewModel.provider.history, // 展开提供者的历史消息
       ];
 
@@ -97,10 +89,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
               );
             }
             final message = history[index]; //💡 直接通过索引获取消息，无需反向计算
-            final isLastUserMessage = // 判断是否为最后一条用户消息
-                message.origin.isUser && index == history.length - 1; //💡 简化逻辑，最后一条即历史数组末尾
-            final canEdit = isLastUserMessage && widget.onEditMessage != null; // 判断是否可编辑
             final isUser = message.origin.isUser; // 判断是否为用户消息
+            final isLastUserMessage = isUser && index == history.length - 1; // 判断是否为最后一条用户消息, 简化逻辑，最后一条即历史数组末尾
+            final canEdit = isLastUserMessage && widget.onEditMessage != null; // 判断是否可编辑
 
             return Padding( // 返回内边距组件
               padding: EdgeInsets.only(top: messageSpacing), // 应用消息间距
