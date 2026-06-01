@@ -60,7 +60,9 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
   bool _isLoadingNext = false; //💡 下拉加载状态标志
   double _lastScrollPosition = 0; //💡 记录上一次滚动位置，用于判断滚动方向
   int _lastHistoryLength = 0; //💡 记录上一次历史消息数量，用于检测新消息
-  bool _isUserScrolling = false; //💡 标记用户是否正在手动滚动
+
+  //💡 新增：标记是否处于“自动追尾”模式。当用户手动滑离底部时关闭，滑到底部时开启
+  bool _isAutoFollow = true; //💡
 
   @override //💡 重写初始化方法
   void initState() { //💡 初始化状态
@@ -83,12 +85,16 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
     final minScroll = _scrollController.position.minScrollExtent; //💡 最小滚动位置
     final currentScroll = _scrollController.position.pixels; //💡 当前滚动位置
 
+    //💡 逻辑优化：判断是否处于底部追尾区（距离底部100px以内）
+    if (currentScroll >= maxScroll - 100) { //💡
+      _isAutoFollow = true; //💡 触底，开启自动跟随
+    } else { //💡
+      _isAutoFollow = false; //💡 用户离开底部，关闭自动跟随，允许回溯阅读
+    } //💡
+
     //💡 判断滚动方向：向上滚动（手指向下滑）是 currentScroll < _lastScrollPosition
     final isScrollingUp = currentScroll < _lastScrollPosition; //💡 向上滚动
     _lastScrollPosition = currentScroll; //💡 更新上一次滚动位置
-
-    //💡 检测用户是否在手动滚动（不在底部附近）
-    _isUserScrolling = currentScroll < maxScroll - 50; //💡 距离底部超过50像素视为用户手动滚动
 
     //💡 检测上拉加载更多（向上滚动到顶部附近）
     if (isScrollingUp && //💡 向上滚动
@@ -134,17 +140,29 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
     builder: (context, viewModel, child) { // 构建器函数，接收上下文、视图模型和子组件
       final currentHistoryLength = viewModel.provider.history.length; //💡 获取当前历史消息数量
 
-      //💡 检测是否有新消息添加，且用户没有在手动滚动，则自动滚动到底部
-      WidgetsBinding.instance.addPostFrameCallback((_) { //💡 布局完成后执行
-        if (_scrollController.hasClients) { //💡 检查滚动位置是否挂载
-          //💡 如果历史消息数量增加（新消息）且用户不在手动滚动，则滚动到底部
-          if (currentHistoryLength > _lastHistoryLength && !_isUserScrolling) { //💡 新消息且用户未手动滚动
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent); //💡 滚动到最大偏移量
-          }
-          //💡 更新历史消息数量记录
-          _lastHistoryLength = currentHistoryLength; //💡 保存当前历史消息数量
-        }
-      });
+      //💡 布局完成后，仅在处于追尾模式时执行滚动
+      // WidgetsBinding.instance.addPostFrameCallback((_) { //💡 布局完成后执行
+      //   if (_scrollController.hasClients) { //💡 检查滚动位置是否挂载
+      //     //💡 如果历史消息数量增加（新消息）且处于自动追尾模式，则滚动到底部
+      //     if (currentHistoryLength > _lastHistoryLength && _isAutoFollow) { //💡
+      //       _scrollController.jumpTo(_scrollController.position.maxScrollExtent); //💡 滚动到最大偏移量
+      //     }
+      //     //💡 更新历史消息数量记录
+      //     _lastHistoryLength = currentHistoryLength; //💡 保存当前历史消息数量
+      //   }
+      // });
+
+      //💡 解决ai回答一部分后继续回答时不会继续滚动到最下方的bug
+      WidgetsBinding.instance.addPostFrameCallback((_) { //💡
+        if (_scrollController.hasClients && _isAutoFollow) { //💡 检查滚动位置是否挂载 并且 处于自动滚动模式
+          //💡 使用 animateTo 实现丝滑的自动追尾滚动
+          _scrollController.animateTo( //💡
+            _scrollController.position.maxScrollExtent, //💡
+            duration: const Duration(milliseconds: 100), //💡
+            curve: Curves.easeOut, //💡
+          ); //💡
+        } //💡
+      }); //💡
 
       final chatStyle = LlmChatViewStyle.resolve(viewModel.style); // 解析聊天视图样式
       final padding = chatStyle.padding as EdgeInsets? ?? const EdgeInsets.only(top: 16, left: 16, right: 16);// 获取内边距, 如果样式中有内边距则使用，否则使用默认内边距
@@ -163,25 +181,25 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
         child: ListView.builder( // 子组件为列表视图构建器
           controller: _scrollController, //💡 绑定控制器
           reverse: false, //💡 修改为非反向，符合正向逻辑顺序 , 原代码是 true , 理解太反人类
-          itemCount: history.length + // 列表项数量
-              (showSuggestions ? 1 : 0) + // 包含建议视图
-              (widget.loadPrevData != null ? 1 : 0) + //💡 上拉加载指示器
-              (widget.loadNextData != null ? 1 : 0), //💡 下拉加载指示器
+          //💡 优化：仅当正在加载时才在 itemCount 中分配位置
+          itemCount: history.length +
+              (showSuggestions ? 1 : 0) +
+              (_isLoadingPrev ? 1 : 0) +
+              (_isLoadingNext ? 1 : 0), //💡
           itemBuilder: (context, index) { //📌 列表项构建器, 之所以把建议分开写是因为它的渲染格式和单条消息不一样, 而上拉下拉加载更多也不一样, 所以也需要写在本处
-            //💡 处理上拉加载指示器（在列表顶部）
-            if (widget.loadPrevData != null && index == 0) { //💡 第一个位置显示上拉加载指示器
-              return _isLoadingPrev //💡 如果正在加载
-                  ? const Padding( //💡 显示加载指示器
-                      padding: EdgeInsets.all(16), //💡 内边距
-                      child: Center( //💡 居中
-                        child: CircularProgressIndicator(), //💡 圆形进度指示器
+
+            //💡 处理上拉加载指示器（只在 isLoadingPrev 为 true 时构建）
+            if (_isLoadingPrev && index == 0) { //💡
+              return const Padding( //💡
+                padding: EdgeInsets.all(16), //💡
+                child: Center( //💡
+                  child: CircularProgressIndicator(), //💡
                       ),
-                    )
-                  : const SizedBox.shrink(); //💡 否则显示空白
+              );
             }
 
-            //💡 调整索引，减去上拉加载指示器占用的位置
-            final adjustedIndex = index - (widget.loadPrevData != null ? 1 : 0); //💡 调整后的索引
+            //💡 调整索引，减去可能存在的上拉加载指示器
+            final adjustedIndex = index - (_isLoadingPrev ? 1 : 0); //💡
 
             //💡 处理建议视图
             if (showSuggestions && adjustedIndex == history.length) { //💡 当索引到达最后一条时，直接渲染建议
@@ -191,16 +209,14 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
               );
             }
 
-            //💡 处理下拉加载指示器（在列表底部）
-            if (widget.loadNextData != null && adjustedIndex == history.length + (showSuggestions ? 1 : 0)) { //💡 最后一个位置显示下拉加载指示器
-              return _isLoadingNext //💡 如果正在加载
-                  ? const Padding( //💡 显示加载指示器
-                      padding: EdgeInsets.all(16), //💡 内边距
-                      child: Center( //💡 居中
-                        child: CircularProgressIndicator(), //💡 圆形进度指示器
+            //💡 处理下拉加载指示器（仅在触发加载且处于列表末尾时构建）
+            if (_isLoadingNext && index == (history.length + (showSuggestions ? 1 : 0) + (_isLoadingPrev ? 1 : 0))) { //💡
+              return const Padding( //💡
+                padding: EdgeInsets.all(16), //💡
+                child: Center( //💡
+                  child: CircularProgressIndicator(), //💡
                       ),
-                    )
-                  : const SizedBox.shrink(); //💡 否则显示空白
+              );
             }
 
             final message = history[adjustedIndex]; //💡 直接通过索引获取消息，无需反向计算

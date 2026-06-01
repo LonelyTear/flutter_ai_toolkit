@@ -31,7 +31,49 @@ class EchoProvider extends LlmProvider with ChangeNotifier {
   }) async* {
     if (prompt == 'FAILFAST') throw const LlmFailureException('Failing fast!');
 
-    // await Future.delayed(const Duration(milliseconds: 1000));
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
+    yield '# Echo\n';
+    await Future.delayed(const Duration(milliseconds: 200));
     yield '# Echo\n';
 
     switch (prompt) {
@@ -41,7 +83,7 @@ class EchoProvider extends LlmProvider with ChangeNotifier {
         throw const LlmFailureException('User requested failure');
     }
 
-    // await Future.delayed(const Duration(milliseconds: 1000));
+    await Future.delayed(const Duration(milliseconds: 200));
     yield prompt;
 
     yield '\n\n# Attachments\n${attachments.map((a) => a.toString())}';
