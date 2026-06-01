@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be // 使用此源代码受 BSD 许可证管辖
 // found in the LICENSE file. // 可在 LICENSE 文件中找到
 
+import 'dart:async'; // 导入异步库
+
 import 'package:flutter/material.dart'; // 导入 Flutter Material 设计库
 import 'package:flutter/widgets.dart'; // 导入 Flutter 基础组件库
 import 'package:flutter_ai_toolkit/flutter_ai_toolkit.dart'; // 导入 Flutter AI Toolkit 主包
@@ -26,6 +28,8 @@ class ChatHistoryView extends StatefulWidget { // 聊天历史视图组件，继
   const ChatHistoryView({ // 构造函数
     this.onEditMessage, // 可选的编辑消息回调函数
     required this.onSelectSuggestion, // 必需的建议选择回调函数
+    this.loadPrevData, //💡 可选的上拉加载更多回调函数
+    this.loadNextData, //💡 可选的下拉加载更多回调函数
     super.key, // 父类 key 参数
   });
 
@@ -40,26 +44,105 @@ class ChatHistoryView extends StatefulWidget { // 聊天历史视图组件，继
   /// The callback function to call when a suggestion is selected. // 当选择建议时调用的回调函数
   final void Function(String suggestion) onSelectSuggestion; // 选择建议的回调函数
 
+  ///💡 上拉加载更多回调函数（加载更早的历史消息）
+  final Future<void> Function()? loadPrevData; // 上拉加载更多
+
+  ///💡 下拉加载更多回调函数（加载更新的消息）
+  final Future<void> Function()? loadNextData; // 下拉加载更多
+
   @override // 重写父类方法
   State<ChatHistoryView> createState() => _ChatHistoryViewState(); // 创建状态对象
 }
 
 class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视图状态类
   final ScrollController _scrollController = ScrollController(); //💡 新增滚动控制器
+  bool _isLoadingPrev = false; //💡 上拉加载状态标志
+  bool _isLoadingNext = false; //💡 下拉加载状态标志
+  double _lastScrollPosition = 0; //💡 记录上一次滚动位置，用于判断滚动方向
+  int _lastHistoryLength = 0; //💡 记录上一次历史消息数量，用于检测新消息
+  bool _isUserScrolling = false; //💡 标记用户是否正在手动滚动
+
+  @override //💡 重写初始化方法
+  void initState() { //💡 初始化状态
+    super.initState(); //💡 调用父类初始化
+    _scrollController.addListener(_scrollListener); //💡 添加滚动监听器
+  }
 
   @override //💡 重写销毁方法
   void dispose() { //💡 销毁控制器
+    _scrollController.removeListener(_scrollListener); //💡 移除滚动监听器
     _scrollController.dispose(); //💡 释放内存
     super.dispose(); //💡 调用父类销毁
+  }
+
+  ///💡 滚动监听方法，用于检测上拉和下拉
+  void _scrollListener() { //💡 滚动监听器
+    if (!_scrollController.hasClients) return; //💡 如果未挂载则返回
+
+    final maxScroll = _scrollController.position.maxScrollExtent; //💡 最大滚动位置
+    final minScroll = _scrollController.position.minScrollExtent; //💡 最小滚动位置
+    final currentScroll = _scrollController.position.pixels; //💡 当前滚动位置
+
+    //💡 判断滚动方向：向上滚动（手指向下滑）是 currentScroll < _lastScrollPosition
+    final isScrollingUp = currentScroll < _lastScrollPosition; //💡 向上滚动
+    _lastScrollPosition = currentScroll; //💡 更新上一次滚动位置
+
+    //💡 检测用户是否在手动滚动（不在底部附近）
+    _isUserScrolling = currentScroll < maxScroll - 50; //💡 距离底部超过50像素视为用户手动滚动
+
+    //💡 检测上拉加载更多（向上滚动到顶部附近）
+    if (isScrollingUp && //💡 向上滚动
+        currentScroll <= minScroll + 100 && //💡 距离顶部100像素内
+        !_isLoadingPrev && //💡 未在加载中
+        widget.loadPrevData != null) { //💡 有加载回调
+      _loadPrevData(); //💡 执行上拉加载
+    }
+
+    //💡 检测下拉加载更多（向下滚动到底部附近）
+    if (!isScrollingUp && //💡 向下滚动
+        currentScroll >= maxScroll - 100 && //💡 距离底部100像素内
+        !_isLoadingNext && //💡 未在加载中
+        widget.loadNextData != null) { //💡 有加载回调
+      _loadNextData(); //💡 执行下拉加载
+    }
+  }
+
+  ///💡 执行上拉加载更多
+  Future<void> _loadPrevData() async { //💡 上拉加载方法
+    if (_isLoadingPrev) return; //💡 防止重复加载
+    setState(() => _isLoadingPrev = true); //💡 设置加载状态
+    try {
+      await widget.loadPrevData!(); //💡 调用外部传入的加载方法
+    } finally {
+      setState(() => _isLoadingPrev = false); //💡 重置加载状态
+    }
+  }
+
+  ///💡 执行下拉加载更多
+  Future<void> _loadNextData() async { //💡 下拉加载方法
+    if (_isLoadingNext) return; //💡 防止重复加载
+    setState(() => _isLoadingNext = true); //💡 设置加载状态
+    try {
+      await widget.loadNextData!(); //💡 调用外部传入的加载方法
+    } finally {
+      setState(() => _isLoadingNext = false); //💡 重置加载状态
+    }
   }
 
   @override // 重写父类方法
   Widget build(BuildContext context) => ChatViewModelClient( // 构建方法，返回聊天视图模型客户端
     builder: (context, viewModel, child) { // 构建器函数，接收上下文、视图模型和子组件
-      //💡 监测数据变化并自动滚动到底部
+      final currentHistoryLength = viewModel.provider.history.length; //💡 获取当前历史消息数量
+
+      //💡 检测是否有新消息添加，且用户没有在手动滚动，则自动滚动到底部
       WidgetsBinding.instance.addPostFrameCallback((_) { //💡 布局完成后执行
         if (_scrollController.hasClients) { //💡 检查滚动位置是否挂载
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent); //💡 滚动到最大偏移量
+          //💡 如果历史消息数量增加（新消息）且用户不在手动滚动，则滚动到底部
+          if (currentHistoryLength > _lastHistoryLength && !_isUserScrolling) { //💡 新消息且用户未手动滚动
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent); //💡 滚动到最大偏移量
+          }
+          //💡 更新历史消息数量记录
+          _lastHistoryLength = currentHistoryLength; //💡 保存当前历史消息数量
         }
       });
 
@@ -80,17 +163,49 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
         child: ListView.builder( // 子组件为列表视图构建器
           controller: _scrollController, //💡 绑定控制器
           reverse: false, //💡 修改为非反向，符合正向逻辑顺序 , 原代码是 true , 理解太反人类
-          itemCount: history.length + (showSuggestions ? 1 : 0), // 列表项数量，包含建议视图
+          itemCount: history.length + // 列表项数量
+              (showSuggestions ? 1 : 0) + // 包含建议视图
+              (widget.loadPrevData != null ? 1 : 0) + //💡 上拉加载指示器
+              (widget.loadNextData != null ? 1 : 0), //💡 下拉加载指示器
           itemBuilder: (context, index) { //📌 列表项构建器, 之所以把建议分开写是因为它的渲染格式和单条消息不一样, 而上拉下拉加载更多也不一样, 所以也需要写在本处
-            if (showSuggestions && index == history.length) { //💡 当索引到达最后一条时，直接渲染建议
+            //💡 处理上拉加载指示器（在列表顶部）
+            if (widget.loadPrevData != null && index == 0) { //💡 第一个位置显示上拉加载指示器
+              return _isLoadingPrev //💡 如果正在加载
+                  ? const Padding( //💡 显示加载指示器
+                      padding: EdgeInsets.all(16), //💡 内边距
+                      child: Center( //💡 居中
+                        child: CircularProgressIndicator(), //💡 圆形进度指示器
+                      ),
+                    )
+                  : const SizedBox.shrink(); //💡 否则显示空白
+            }
+
+            //💡 调整索引，减去上拉加载指示器占用的位置
+            final adjustedIndex = index - (widget.loadPrevData != null ? 1 : 0); //💡 调整后的索引
+
+            //💡 处理建议视图
+            if (showSuggestions && adjustedIndex == history.length) { //💡 当索引到达最后一条时，直接渲染建议
               return ChatSuggestionsView( // 返回建议视图
                 suggestions: viewModel.suggestions, // 传入建议列表
                 onSelectSuggestion: widget.onSelectSuggestion, // 传入选择建议的回调
               );
             }
-            final message = history[index]; //💡 直接通过索引获取消息，无需反向计算
+
+            //💡 处理下拉加载指示器（在列表底部）
+            if (widget.loadNextData != null && adjustedIndex == history.length + (showSuggestions ? 1 : 0)) { //💡 最后一个位置显示下拉加载指示器
+              return _isLoadingNext //💡 如果正在加载
+                  ? const Padding( //💡 显示加载指示器
+                      padding: EdgeInsets.all(16), //💡 内边距
+                      child: Center( //💡 居中
+                        child: CircularProgressIndicator(), //💡 圆形进度指示器
+                      ),
+                    )
+                  : const SizedBox.shrink(); //💡 否则显示空白
+            }
+
+            final message = history[adjustedIndex]; //💡 直接通过索引获取消息，无需反向计算
             final isUser = message.origin.isUser; // 判断是否为用户消息
-            final isLastUserMessage = isUser && index == history.length - 1; // 判断是否为最后一条用户消息, 简化逻辑，最后一条即历史数组末尾
+            final isLastUserMessage = isUser && adjustedIndex == history.length - 1; // 判断是否为最后一条用户消息, 简化逻辑，最后一条即历史数组末尾
             final canEdit = isLastUserMessage && widget.onEditMessage != null; // 判断是否可编辑
 
             return Padding( // 返回内边距组件
@@ -106,7 +221,7 @@ class _ChatHistoryViewState extends State<ChatHistoryView> { // 聊天历史视�
                       )
                       : LlmMessageView( // 否则显示 LLM 消息视图
                         message, // 传入消息对象
-                        isWelcomeMessage: index == 0 && showWelcomeMessage, //💡 明确判断第一条是否为欢迎消息
+                        isWelcomeMessage: adjustedIndex == 0 && showWelcomeMessage, //💡 明确判断第一条是否为欢迎消息
                       ),
             );
           },

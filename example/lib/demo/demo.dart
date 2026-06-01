@@ -147,6 +147,16 @@ class _ChatPageState extends State<ChatPage>
                             'Halloween?',
                         'What\'s the difference between a pumpkin and a squash?',
                       ],
+                      loadPrevData: () async {
+                        await Future.delayed(const Duration(seconds: 1));
+                        print("loadPrevData");
+                        // 调用 HTTP 接口加载更早的消息
+                      },
+                      loadNextData: () async {
+                        await Future.delayed(const Duration(seconds: 1));
+                        print("loadNextData");
+                        // 调用 HTTP 接口加载更新的消息
+                      },
                     ),
                   ],
                 ),

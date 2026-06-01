@@ -88,6 +88,8 @@ class LlmChatView extends StatefulWidget {
     List<String> suggestions = const [],
     String? welcomeMessage,
     this.onCancelCallback,
+    this.loadPrevData,//📌
+    this.loadNextData,//📌
     this.onErrorCallback,
     this.cancelMessage = 'CANCEL',
     this.errorMessage = 'ERROR',
@@ -96,6 +98,7 @@ class LlmChatView extends StatefulWidget {
     this.autofocus,
     LlmChatViewStrings? strings,
     super.key,
+
   }) : viewModel = ChatViewModel(
          provider: provider,
          responseBuilder: responseBuilder,
@@ -162,6 +165,12 @@ class LlmChatView extends StatefulWidget {
   /// will be focused automatically.
   final bool? autofocus;
 
+  ///💡 上拉加载更多回调函数（加载更早的历史消息）
+  final Future<void> Function()? loadPrevData; // 上拉加载更多
+
+  ///💡 下拉加载更多回调函数（加载更新的消息）
+  final Future<void> Function()? loadNextData; // 下拉加载更多
+
   @override
   State<LlmChatView> createState() => _LlmChatViewState();
 }
@@ -219,6 +228,8 @@ class _LlmChatViewState extends State<LlmChatView>
                                     ? _onEditMessage
                                     : null,
                             onSelectSuggestion: _onSelectSuggestion,
+                            loadPrevData: widget.loadPrevData,
+                            loadNextData: widget.loadNextData,
                           ),
                         ],
                       ),
